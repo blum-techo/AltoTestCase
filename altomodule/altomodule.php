@@ -7,6 +7,7 @@ class AltoModule extends Module
 {
     public function __construct()
     {
+        // Задание основных параметров модуля.
         $this->name = 'altomodule';
         $this->tab = 'other';
         $this->version = '1.0.0';
@@ -29,16 +30,18 @@ class AltoModule extends Module
     public function install()
     {
         return (
+            // Регистрация хуков и создание переменныхв в таблице конфигурации.
             parent::install()
-            && $this->registerHook('displayHeader') &&
-            Configuration::updateValue('ALTOMODULE_PRICE_UP', null) &&
-            Configuration::updateValue('ALTOMODULE_PRICE_DOWN', null)
+            && $this->registerHook('displayHeader')
+            && Configuration::updateValue('ALTOMODULE_PRICE_UP', null)
+            && Configuration::updateValue('ALTOMODULE_PRICE_DOWN', null)
         );
     }
 
     public function uninstall()
     {
         return (
+            // Удаление переменных из таблицы конфигурации.
             parent::uninstall()
             && Configuration::deleteByName('ALTOMODULE_PRICE_UP')
             && Configuration::deleteByName('ALTOMODULE_PRICE_DOWN')
@@ -55,25 +58,23 @@ class AltoModule extends Module
             $priceDown = (string)Tools::getValue('ALTOMODULE_PRICE_DOWN');
 
 
-            // check that the value is valid
+            // Проверка значение.
             if (empty($priceUp) || empty($priceDown) || !Validate::isInt($priceUp) || !Validate::isInt($priceDown)) {
-                // invalid value, show an error
+                // Показать ошибку, если цена указана некорректно.
                 $output = $this->displayError($this->l('Invalid Price value'));
             } else {
-                // value is ok, update it and display a confirmation message
+                // Обновить значения и отобразить уведомление об успехе, если значение корректное.
                 Configuration::updateValue('ALTOMODULE_PRICE_UP', $priceUp);
                 Configuration::updateValue('ALTOMODULE_PRICE_DOWN', $priceDown);
                 $output = $this->displayConfirmation($this->l('Settings updated'));
             }
         }
 
-        // display any message, then the form
         return $output . $this->displayForm();
     }
 
     public function displayForm()
     {
-
         $fields_form = array();
         $fields_form[0]['form'] = array(
             'legend' => array(
@@ -108,40 +109,40 @@ class AltoModule extends Module
             )
         );
 
-
         $helper = new HelperForm();
-
-        // Module, token and currentIndex
         $helper->table = $this->table;
         $helper->name_controller = $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->currentIndex = AdminController::$currentIndex . '&' . http_build_query(['configure' => $this->name]);
         $helper->submit_action = 'submit' . $this->name;
-
-        // Default language
         $helper->default_form_language = (int)Configuration::get('PS_LANG_DEFAULT');
 
-        // Load current value into the form
+        // Загрузка текущих значений в форму.
         $helper->fields_value['ALTOMODULE_PRICE_DOWN'] = Tools::getValue('ALTOMODULE_PRICE_DOWN', Configuration::get('ALTOMODULE_PRICE_DOWN'));
         $helper->fields_value['ALTOMODULE_PRICE_UP'] = Tools::getValue('ALTOMODULE_PRICE_UP', Configuration::get('ALTOMODULE_PRICE_UP'));
 
         return $helper->generateForm($fields_form);
     }
 
+    /**
+     * @throws PrestaShopDatabaseException
+     */
     public function hookDisplayHeader($params)
     {
-        $db = \Db::getInstance(true);
+        // Выполнить подключение к базе даных.
+        $db = Db::getInstance(true);
 
         $price_from = Configuration::get('ALTOMODULE_PRICE_DOWN');
         $price_to = Configuration::get('ALTOMODULE_PRICE_UP');
 
         $sql = new DbQuery();
-        $sql->select('COUNT(*)');
+        $sql->select('*');
         $sql->from('ps_product', 'p');
         $sql->where('p.price BETWEEN '.$price_from.' AND '.$price_to);
         $db->executeS($sql);
         $count_item = $db->numRows();
 
+        // Передача переменных.
         $this->context->smarty->assign([
             'price_from' => $price_from,
             'price_to' => $price_to,
